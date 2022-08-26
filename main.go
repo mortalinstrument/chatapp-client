@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -15,7 +16,8 @@ const (
 	CONN_TYPE = "tcp"
 )
 
-var myself *User
+var emptyUserObject = User{}
+var myself = &emptyUserObject
 
 func main() {
 	// self explanatory
@@ -24,24 +26,25 @@ func main() {
 	defer log.Close()
 	// start goroutine for listener
 	go listener(log)
+	time.Sleep(time.Duration(time.Second * 3))
 
 	//picking username
 	userSetup(log)
 
-	sendRequest("test", log)
+	//go addPreviousConnections()
 
-	// //loop for sending messages
-	// for {
-	// 	reader := bufio.NewReader(os.Stdin)
-	// 	fmt.Print(">> ")
-	// 	text, _ := reader.ReadString('\n')
+	//loop for sending messages
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print(">> ")
+		text, _ := reader.ReadString('\n')
 
-	// 	sendRequest(text)
-	// }
+		go sendRequest(text, log)
+	}
 }
 
 func listener(log *os.File) {
-	time.Sleep(time.Duration(time.Second * 2))
+	time.Sleep(time.Duration(time.Second * 1))
 	// Listen for incoming connections.
 	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
 	if err != nil {
@@ -50,7 +53,7 @@ func listener(log *os.File) {
 	}
 	// Close the listener when the application closes.
 	defer l.Close()
-	//fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
+	logger(fmt.Sprintf("Listening for incoming connections on %s:%s", CONN_HOST, CONN_PORT), log)
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
@@ -58,15 +61,15 @@ func listener(log *os.File) {
 			fmt.Println("Error accepting: ", err.Error())
 			os.Exit(1)
 		}
-		// Handle connections in a new goroutine.
+		//TODO: evtl partner mitsenden, um hier eintragen zu können, danach nachricht
 		connection := Conn{
-			sourceIp:   conn.RemoteAddr().Network(),
+			sourceIp:   conn.RemoteAddr(),
 			partner:    nil,
 			connection: conn,
-			channel:    nil,
 		}
-
-		go connection.HandleRequest()
+		//logger(fmt.Sprintf("handling request from %s sent by user with name %s", connection.sourceIp, connection.partner.name), log)
+		// Handle connections in a new goroutine.
+		go connection.HandleRequest(log)
 	}
 }
 
@@ -79,17 +82,17 @@ func sendRequest(msg string, log *os.File) {
 	}
 
 	connection := Conn{
-		sourceIp:   conn.LocalAddr().Network(),
+		sourceIp:   conn.LocalAddr(),
 		partner:    myself,
 		connection: conn,
-		channel:    nil,
 	}
 
 	connection.SendRequest(msg, log)
 }
 
-func contactUser() {
+func firstContact(conn Conn) {
 	// func for first contact, channel for messages should be created here
+
 }
 
 func userSetup(log *os.File) {
@@ -98,9 +101,9 @@ func userSetup(log *os.File) {
 	nick, _ := reader.ReadString('\n')
 	logger(fmt.Sprintf("nickname set as %s", nick), log)
 
-	myself.name = nick
-	myself.lastLogin = time.Now()
-	myself.active = true
+	myself.Name = nick
+	myself.LastLogin = time.Now()
+	myself.Active = true
 }
 
 // func checkForServer(log *os.File) {
@@ -130,7 +133,9 @@ func createLogFile() *os.File {
 
 func logger(msg string, log *os.File) {
 	h, m, s := time.Now().Hour(), time.Now().Minute(), time.Now().Second()
-	log.WriteString(fmt.Sprintf("%d:%d:%d : %s \n", h, m, s, msg))
+	_, file, line, _ := runtime.Caller(1)
+	log.WriteString(fmt.Sprintf("%s Zeile:%d  	%d:%d:%d : %s \n", file, line, h, m, s, msg))
+
 }
 
 // // Handles incoming requests.
