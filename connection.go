@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -49,14 +50,14 @@ type Conn struct {
 // 	return false
 // }
 
-func (c Conn) HandleRequest(log *os.File) {
+func (c Conn) HandleRequest(log *os.File) error {
 	// Make a buffer to hold incoming data. //TODO: BIGGER BYTE ARRAY
 	buf := make([]byte, 1024)
 	// Read the incoming connection into the buffer.
 	reqLen, err := c.connection.Read(buf)
 
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+		return err
 	}
 	input := buf[:reqLen]
 	buffer := bytes.NewBuffer(input)
@@ -66,9 +67,12 @@ func (c Conn) HandleRequest(log *os.File) {
 	err = decoder.Decode(&recievedMessageObject)
 	if err != nil {
 		logger(fmt.Sprintf("couldn't decode message with err: %s", err), log)
+		return err
 	}
 	logger(fmt.Sprintf("recieved message object with: %s:%s:%s", recievedMessageObject.From.Name, recievedMessageObject.Timestamp, recievedMessageObject.Message), log)
 	c.connection.Close()
+	return nil
+
 	// //TODO: save connection and create a channel to save it in, or just add to existing channel out of list
 	// wasConnectedBefore := checkForPreviousConnection(previousConnections, c)
 	// if !wasConnectedBefore {
@@ -82,7 +86,7 @@ func (c Conn) HandleRequest(log *os.File) {
 
 }
 
-func (c Conn) SendRequest(msg string, log *os.File) {
+func (c Conn) SendRequest(msg string, log *os.File) error {
 	logger(fmt.Sprintf("trying to send request with msg '%s' to %s:%s", msg, c.sourceIp, c.partner.Name), log)
 	//TODO for later on development
 
@@ -96,6 +100,11 @@ func (c Conn) SendRequest(msg string, log *os.File) {
 	// } else {
 	// 	logger(fmt.Sprintf("client %s:%s has been connected before, lastLogin %s", c.sourceIp, c.partner.Name, c.partner.LastLogin), log)
 	// }
+
+	//check for emtpy message
+	if msg == "" {
+		return errors.New("Message was empty, exiting")
+	}
 
 	//create message object
 	msgToSend := Message{
@@ -124,4 +133,5 @@ func (c Conn) SendRequest(msg string, log *os.File) {
 	// }
 
 	c.connection.Close()
+	return nil
 }

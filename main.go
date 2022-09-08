@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -26,7 +27,7 @@ func main() {
 	defer log.Close()
 	// start goroutine for listener
 	go listener(log)
-	time.Sleep(time.Duration(time.Second * 3))
+	time.Sleep(time.Duration(time.Second * 2))
 
 	//picking username
 	userSetup(log)
@@ -43,13 +44,13 @@ func main() {
 	}
 }
 
-func listener(log *os.File) {
+func listener(log *os.File) error {
 	time.Sleep(time.Duration(time.Second * 1))
 	// Listen for incoming connections.
 	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
+		return err
 	}
 	// Close the listener when the application closes.
 	defer l.Close()
@@ -59,7 +60,7 @@ func listener(log *os.File) {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
+			return err
 		}
 		//TODO: evtl partner mitsenden, um hier eintragen zu können, danach nachricht
 		connection := Conn{
@@ -73,12 +74,12 @@ func listener(log *os.File) {
 	}
 }
 
-func sendRequest(msg string, log *os.File) {
+func sendRequest(msg string, log *os.File) (err error) {
 	//connect to server
 	conn, err := net.Dial(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
 	if err != nil {
 		logger(fmt.Sprintf("Error connecting: %s", err.Error()), log)
-		os.Exit(1)
+		return errors.New("Error Connecting")
 	}
 
 	connection := Conn{
@@ -88,6 +89,7 @@ func sendRequest(msg string, log *os.File) {
 	}
 
 	connection.SendRequest(msg, log)
+	return nil
 }
 
 func firstContact(conn Conn) {
@@ -122,6 +124,7 @@ func userSetup(log *os.File) {
 
 func createLogFile() *os.File {
 	t := time.Now()
+	os.Chdir("log")
 	f, err := os.Create("log-" + t.Format("01-02-2006 15:04:05 Monday"))
 
 	if err != nil {
