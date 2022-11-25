@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// TODO: FIX TESTS
+// TODO: FIX TEST
 func TestMessageSending(t *testing.T) {
 	log := createLogFile()
 	//start messageListener
