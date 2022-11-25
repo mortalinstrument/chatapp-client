@@ -2,14 +2,21 @@ package main
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 )
 
+// TODO: FIX TESTS
 func TestMessageSending(t *testing.T) {
 	log := createLogFile()
-	//start listener
-	err := go listener(log)
+	//start messageListener
+	go func() {
+		err := messageListener(log)
+		if err != nil {
+			os.Exit(1)
+		}
+	}()
 
 	time.Sleep(time.Duration(time.Second * 2))
 

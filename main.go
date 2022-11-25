@@ -2,99 +2,110 @@ package main
 
 import (
 	"bufio"
+	"embed"
 	"errors"
+	"flag"
 	"fmt"
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"log"
 	"net"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 )
 
 const (
-	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
+	CONN_HOST    = "localhost"
+	MESSAGE_PORT = "3333"
+	CONN_TYPE    = "tcp"
 )
 
 var emptyUserObject = User{}
 var myself = &emptyUserObject
 
+var addr = flag.String("addr", "localhost:7777", "service adress for frontendListener")
+var directory = flag.String("d", "../chat/./dist", "the directory of static file to host")
+
+var chat embed.FS
+
 func main() {
-	// self explanatory
+	// creating new log file
 	log := createLogFile()
 
+	msgCannel := make(chan Message, 1)
+
 	defer log.Close()
-	// start goroutine for listener
-	go listener(log)
-	time.Sleep(time.Duration(time.Second * 2))
 
-	//picking username
-	userSetup(log)
+	go explore(log)
+	go listenForExplorers(log)
 
-	//go addPreviousConnections()
+	//TODO: should come from frontend
+	myself.Name = "David"
+	myself.Active = true
+	myself.LastLogin = time.Now()
 
-	//loop for sending messages
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print(">> ")
-		text, _ := reader.ReadString('\n')
+	var wg sync.WaitGroup
+	wg.Add(2) // Wait for 2 goroutine (thread) to be done before stopping to wait
+	// start goroutine for messageListener
+	go messageListener(wg, log, msgCannel)
+	//instance new frontend and start listener from there
+	go Frontend{msgCannel}.frontendListener(wg, log)
 
-		go sendRequest(text, log)
+	recipient := ipaddr.NewIPAddressString("127.0.0.1").GetAddress().GetNetIP()
+	for i := 0; i < 1000; i++ {
+		time.Sleep(6 * time.Second)
+		sendRequest(fmt.Sprintf("Test Nachricht %i", i), &recipient, log)
 	}
+	wg.Wait()
 }
 
-func listener(log *os.File) error {
+func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) error {
 	time.Sleep(time.Duration(time.Second * 1))
 	// Listen for incoming connections.
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
+	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+MESSAGE_PORT)
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
+		fmt.Println("Error listening for messages: ", err.Error())
 		return err
+		wg.Done()
 	}
-	// Close the listener when the application closes.
+	// Close the messageListener when the application closes.
 	defer l.Close()
-	logger(fmt.Sprintf("Listening for incoming connections on %s:%s", CONN_HOST, CONN_PORT), log)
+	logger(fmt.Sprintf("Listening for incoming messages on %s:%s", CONN_HOST, MESSAGE_PORT), log)
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			fmt.Println("Error accepting incoming message: ", err.Error())
 			return err
+			wg.Done()
 		}
-		//TODO: evtl partner mitsenden, um hier eintragen zu können, danach nachricht
 		connection := Conn{
-			sourceIp:   conn.RemoteAddr(),
+			sourceIp:   conn.LocalAddr().String(),
 			partner:    nil,
 			connection: conn,
 		}
 		//logger(fmt.Sprintf("handling request from %s sent by user with name %s", connection.sourceIp, connection.partner.name), log)
 		// Handle connections in a new goroutine.
-		go connection.HandleRequest(log)
+		go connection.HandleRequest(log, msgChannel)
 	}
 }
 
-func sendRequest(msg string, log *os.File) (err error) {
+func sendRequest(msg string, recipient *net.IP, log *os.File) (err error) {
 	//connect to server
-	conn, err := net.Dial(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
+	conn, err := net.Dial(CONN_TYPE, recipient.String()+":"+MESSAGE_PORT)
 	if err != nil {
 		logger(fmt.Sprintf("Error connecting: %s", err.Error()), log)
 		return errors.New("Error Connecting")
 	}
 
 	connection := Conn{
-		sourceIp:   conn.LocalAddr(),
+		sourceIp:   conn.LocalAddr().String(),
 		partner:    myself,
 		connection: conn,
 	}
-
 	connection.SendRequest(msg, log)
 	return nil
-}
-
-func firstContact(conn Conn) {
-	// func for first contact, channel for messages should be created here
-
 }
 
 func userSetup(log *os.File) {
@@ -109,15 +120,15 @@ func userSetup(log *os.File) {
 }
 
 // func checkForServer(log *os.File) {
-// 	conn, err := net.Dial(CONN_TYPE, ":"+CONN_PORT)
+// 	conn, err := net.Dial(CONN_TYPE, ":"+MESSAGE_PORT)
 // 	if err != nil {
-// 		logger("Server was'nt available, Client shutting down", log)
+// 		logger("Server wasn't available, Client shutting down", log)
 // 		fmt.Println("Server not responding, exiting...")
 // 		conn.Close()
 // 		os.Exit(1)
 // 	} else {
 // 		conn.Write([]byte("2"))
-// 		logger(fmt.Sprintf("%s %s %s\n", CONN_HOST, "responding on port:", CONN_PORT), log)
+// 		logger(fmt.Sprintf("%s %s %s\n", CONN_HOST, "responding on port:", MESSAGE_PORT), log)
 // 		conn.Close()
 // 	}
 // }
