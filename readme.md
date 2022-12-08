@@ -5,3 +5,5 @@ Geplant ist, das Clients sich gegenseitig erkennen indem sie Broadcasts in regel
 Diese sollen zu einer Nutzerliste kombiniert werden.
 Der Chat soll nur für lokale Netzwerke funktionieren und ist deshalb perfekt für kleiner Firmen, ohne Spuren zu hinterlassen (außer im Netzwerk)
 Datenschutz und wenig bis keine Nachvollziehbarkeit (außer über die logs) sind Ziel des Konzepts
+
+Im Rahmen eines Schulprojekts entstanden im Zeitraum August bis Dezember 2022
