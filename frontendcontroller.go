@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -63,23 +61,28 @@ func readPump(conn *websocket.Conn) {
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, buffer, err := conn.ReadMessage()
+		_, reader, err := conn.NextReader()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				fmt.Println(err.Error())
 			}
 			fmt.Println(err.Error())
+			return
 		}
-		fmt.Println(buffer)
-		err, message := writeToMessageObj(buffer)
+		fmt.Println(reader)
+		decoder := json.NewDecoder(reader)
+		receivedMessageObject := IncomingMessage{}
+		err = decoder.Decode(&receivedMessageObject) //decodes Request-Body into Message
 		if err != nil {
 			fmt.Println("cannot Decode Message")
-			fmt.Println(buffer)
+			fmt.Println(receivedMessageObject)
+			return
 		}
-		fmt.Println(message)
 
-		recipientIp := ipaddr.NewIPAddressString(message.ToIP).GetAddress().GetNetIP()
-		sendRequest(message.Message, &recipientIp, log)
+		fmt.Println(receivedMessageObject)
+
+		recipientIp := ipaddr.NewIPAddressString(receivedMessageObject.ToIP).GetAddress().GetNetIP()
+		sendRequest(receivedMessageObject.Message, &recipientIp, log)
 	}
 }
 
@@ -138,17 +141,5 @@ func (frontend Frontend) serveWs(w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go frontend.writePump(conn)
 	go readPump(conn)
-
-}
-
-func writeToMessageObj(buf []byte) (error, IncomingMessage) {
-	input := buf[:]
-	buffer := bytes.NewBuffer(input)
-	decoder := gob.NewDecoder(buffer)
-	receivedMessageObject := IncomingMessage{}
-	err := decoder.Decode(&receivedMessageObject) //decodes Request-Body into Message
-
-	fmt.Println(receivedMessageObject)
-	return err, receivedMessageObject
 
 }

@@ -76,10 +76,6 @@ export default createStore({
   },
   actions: {
     async establishWebsocketConnection(context){
-      socket.onopen = () => {
-        socket.send("Client is here!")
-      }
-
       socket.onclose = event => {
         console.log("Socket closed: " + event.reason)
       }
