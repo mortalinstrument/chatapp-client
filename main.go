@@ -45,7 +45,7 @@ func (s *Signaler) read() bool {
 var emptyUserObject = User{}
 var myself = &emptyUserObject
 
-var addr = flag.String("addr", "localhost:7777", "service adress for frontendListener")
+var addr = flag.String("addr", getOwnIPAdress().String()+":7777", "service adress for frontendListener")
 var directory = flag.String("d", "../chat/./dist", "the directory of static file to host")
 
 var chat embed.FS
