@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,13 @@ type Message struct {
 	Message   string
 	Timestamp time.Time
 	From      User
+}
+
+type IncomingMessage struct {
+	Message   string
+	Timestamp string
+	ToIP      string
+	ToName    string
 }
 
 type User struct {
@@ -63,8 +71,6 @@ func (c Conn) SendRequest(msg string, log *os.File) error {
 		return errors.New("Message was empty, exiting")
 	}
 
-	// add sender ip
-	myself.IP = getOwnIPAdress().String()
 	//create message object
 	msgToSend := Message{
 		Message:   msg,
@@ -73,7 +79,7 @@ func (c Conn) SendRequest(msg string, log *os.File) error {
 	}
 
 	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
+	enc := json.NewEncoder(&buf)
 
 	if err := enc.Encode(msgToSend); err != nil {
 		logger(fmt.Sprintf("msg %s failed to encode with error: %s", msg, err), log)

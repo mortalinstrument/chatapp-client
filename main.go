@@ -6,8 +6,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
-	"log"
 	"net"
 	"os"
 	"runtime"
@@ -21,6 +21,27 @@ const (
 	CONN_TYPE    = "tcp"
 )
 
+type Config struct {
+	Username string `envconfig:"CHAT_USERNAME"`
+}
+
+type Signaler struct {
+	mu   sync.Mutex
+	done bool
+}
+
+func (s *Signaler) setDoneTrue() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.done = true
+}
+
+func (s *Signaler) read() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.done
+}
+
 var emptyUserObject = User{}
 var myself = &emptyUserObject
 
@@ -29,9 +50,16 @@ var directory = flag.String("d", "../chat/./dist", "the directory of static file
 
 var chat embed.FS
 
+// creating new log file
+var log = createLogFile()
+
 func main() {
-	// creating new log file
-	log := createLogFile()
+	var s Config
+	err := envconfig.Process("chat", &s)
+	if err != nil {
+		fmt.Println("")
+		os.Exit(1)
+	}
 
 	msgCannel := make(chan Message, 1)
 
@@ -41,22 +69,35 @@ func main() {
 	go listenForExplorers(log)
 
 	//TODO: should come from frontend
-	myself.Name = "David"
+	fmt.Println("username: " + s.Username)
+	myself.Name = s.Username
 	myself.Active = true
 	myself.LastLogin = time.Now()
+	myself.IP = getOwnIPAdress().String()
 
 	var wg sync.WaitGroup
+	signaler := Signaler{done: false}
+
 	wg.Add(2) // Wait for 2 goroutine (thread) to be done before stopping to wait
 	// start goroutine for messageListener
 	go messageListener(wg, log, msgCannel)
 	//instance new frontend and start listener from there
 	go Frontend{msgCannel}.frontendListener(wg, log)
 
-	recipient := ipaddr.NewIPAddressString("127.0.0.1").GetAddress().GetNetIP()
-	for i := 0; i < 1000; i++ {
-		time.Sleep(6 * time.Second)
-		sendRequest(fmt.Sprintf("Test Nachricht %i", i), &recipient, log)
-	}
+	go func(signaler2 Signaler) {
+		for !signaler2.read() {
+			if len(exploredUsers) > 0 {
+				fmt.Println("after if")
+				recipient := ipaddr.NewIPAddressString(exploredUsers[0].IP).GetAddress().GetNetIP()
+				fmt.Println("before for")
+				for i := 0; i < 1000; i++ {
+					fmt.Println(i)
+					time.Sleep(6 * time.Second)
+					sendRequest(fmt.Sprintf("Test Nachricht %i", i), &recipient, log)
+				}
+			}
+		}
+	}(signaler)
 	wg.Wait()
 }
 
@@ -139,7 +180,7 @@ func createLogFile() *os.File {
 	f, err := os.Create("log-" + t.Format("01-02-2006 15:04:05 Monday"))
 
 	if err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
 
 	return f

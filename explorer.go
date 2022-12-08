@@ -66,12 +66,12 @@ func listenForExplorers(log *os.File) {
 		if !(newUser.Name == myself.Name) || !(newUser.IP == myself.IP) {
 			if !userDoesAlreadyExist() {
 				exploredUsers = append(exploredUsers, newUser)
-				logger("got exploring message from another client, creating user: "+newUser.Name, log)
+				logger("got exploring message from another client, creating user: "+newUser.Name+" with ip: "+newUser.IP, log)
 			} else {
-				logger("recieved Broadcast, but ignored it because user already exists", log)
+				logger("recieved Broadcast, but ignored it because user already exists ( "+newUser.Name+", "+newUser.IP+" )", log)
 			}
 		} else {
-			logger("recieved Broadcast, but ignored it because it is myself", log)
+			logger("recieved Broadcast, but ignored it because it is myself ( "+newUser.Name+" = "+myself.Name+", "+newUser.IP+" = "+myself.IP+" )", log)
 		}
 	}
 }

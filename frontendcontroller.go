@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"log"
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"net/http"
 	"os"
 	"sync"
@@ -61,17 +63,23 @@ func readPump(conn *websocket.Conn) {
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, message, err := conn.ReadMessage()
+		_, buffer, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				fmt.Println(err.Error())
 			}
 			fmt.Println(err.Error())
-			break
 		}
+		fmt.Println(buffer)
+		err, message := writeToMessageObj(buffer)
+		if err != nil {
+			fmt.Println("cannot Decode Message")
+			fmt.Println(buffer)
+		}
+		fmt.Println(message)
 
-		//TODO: add call to sendrequest, first, get recipient from explorer.go
-		fmt.Println(string(message))
+		recipientIp := ipaddr.NewIPAddressString(message.ToIP).GetAddress().GetNetIP()
+		sendRequest(message.Message, &recipientIp, log)
 	}
 }
 
@@ -122,7 +130,7 @@ func (frontend Frontend) serveWs(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -130,5 +138,17 @@ func (frontend Frontend) serveWs(w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go frontend.writePump(conn)
 	go readPump(conn)
+
+}
+
+func writeToMessageObj(buf []byte) (error, IncomingMessage) {
+	input := buf[:]
+	buffer := bytes.NewBuffer(input)
+	decoder := gob.NewDecoder(buffer)
+	receivedMessageObject := IncomingMessage{}
+	err := decoder.Decode(&receivedMessageObject) //decodes Request-Body into Message
+
+	fmt.Println(receivedMessageObject)
+	return err, receivedMessageObject
 
 }

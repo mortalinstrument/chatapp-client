@@ -12,6 +12,13 @@ export type minifiedMessage = {
   From: string
 }
 
+export type outgoingMessage = {
+  Message: string,
+  Timestamp: string,
+  ToIP: string,
+  ToName: string
+}
+
 export type User = {
   Name: string,
   IP: string,
@@ -90,7 +97,7 @@ export default createStore({
     sendMessage(context, message: minifiedMessage){
       socket.send(JSON.stringify(message))
       console.log(JSON.stringify(message))
-      context.commit('addMessageFromFrontend', message)
+      context.commit('addMessageFromFrontend', JSON.stringify(message))
     }
   },
   modules: {

@@ -38,7 +38,7 @@
     import { IonInput, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList, IonButton } from '@ionic/vue';
     import { defineComponent } from 'vue';
     import { mapActions } from 'vuex';
-    import { Message, User, minifiedMessage } from '../store/index'
+    import { Message, User, minifiedMessage, outgoingMessage } from '../store/index'
   
     export default defineComponent({
       components: { IonInput, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList, IonButton},
@@ -58,10 +58,11 @@
           var msg = this.messageToSend
           var date = new Date
           // TODO: add name selection to frontend and name to store
-          var msgToSend: minifiedMessage = {
+          var msgToSend: outgoingMessage = {
             Message: msg,
             Timestamp: date.toJSON(),
-            From: "David"
+            ToIP: partner.IP,
+            ToName: partner.Name
           }
           console.log(msgToSend)
           this.messageToSend = ""
