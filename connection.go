@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -57,6 +56,7 @@ func (c Conn) HandleRequest(log *os.File, msgChannel chan Message) error {
 		logger(fmt.Sprintf("couldn't decode message with err: %s", err), log)
 		return err
 	}
+	logger("message is about to be written into msgChannel, may be blocked if not recieved soon", log)
 	msgChannel <- recievedMessageObject
 	logger(fmt.Sprintf("recieved message object with: %s:%s:%s", recievedMessageObject.From.Name, recievedMessageObject.Timestamp, recievedMessageObject.Message), log)
 	c.connection.Close()
@@ -79,7 +79,7 @@ func (c Conn) SendRequest(msg string, log *os.File) error {
 	}
 
 	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
+	enc := gob.NewEncoder(&buf)
 
 	if err := enc.Encode(msgToSend); err != nil {
 		logger(fmt.Sprintf("msg %s failed to encode with error: %s", msg, err), log)

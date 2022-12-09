@@ -23,7 +23,7 @@
 
             <ion-item-divider>
               <ion-label>
-                {{ message.From + " um " + new Date(message.Timestamp).toLocaleString() }}
+                {{ message.From + " am " + new Date(message.Timestamp).toLocaleString() }}
               </ion-label>
             </ion-item-divider>
           </ion-item-group>

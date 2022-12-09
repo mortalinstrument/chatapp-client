@@ -68,10 +68,16 @@ export default createStore({
         state.partners[index].Messages.unshift(messageToSave)
       }
     },
-    addMessageFromFrontend(state, payload: minifiedMessage){
-      const index = state.partners.findIndex((partner) => partner.Name == payload.From )
-      console.log(payload)
-      state.partners[index].Messages.unshift(payload)
+    addMessageFromFrontend(state, payload: outgoingMessage){
+      const index = state.partners.findIndex((partner) => partner.Name == payload.ToName )
+      console.log(index, payload)
+      const msgToSave: minifiedMessage = {
+        Message: payload.Message,
+        Timestamp: payload.Timestamp,
+        //TODO UPDATE WITH REAL NAME THATH SHOULD BE ASKED
+        From: "Testuser" 
+      }
+      state.partners[index]?.Messages.unshift(msgToSave)
     }
   },
   actions: {
@@ -90,10 +96,9 @@ export default createStore({
         context.commit('addMessageFromWebsocket', jsonObject)
       }
     },
-    sendMessage(context, message: minifiedMessage){
+    sendMessage(context, message: outgoingMessage){
       socket.send(JSON.stringify(message))
-      console.log(JSON.stringify(message))
-      context.commit('addMessageFromFrontend', JSON.stringify(message))
+      context.commit('addMessageFromFrontend', message)
     }
   },
   modules: {

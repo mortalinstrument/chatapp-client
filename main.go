@@ -45,7 +45,7 @@ func (s *Signaler) read() bool {
 var emptyUserObject = User{}
 var myself = &emptyUserObject
 
-var addr = flag.String("addr", getOwnIPAdress().String()+":7777", "service adress for frontendListener")
+var addr = flag.String("addr", "localhost:7777", "service adress for frontendListener")
 var directory = flag.String("d", "../chat/./dist", "the directory of static file to host")
 
 var chat embed.FS
@@ -84,6 +84,14 @@ func main() {
 	//instance new frontend and start listener from there
 	go Frontend{msgCannel}.frontendListener(wg, log)
 
+	go func() {
+		recipient := ipaddr.NewIPAddressString("127.0.0.1").GetAddress().GetNetIP()
+		for i := 0; i < 1000; i++ {
+			time.Sleep(6 * time.Second)
+			sendRequest(fmt.Sprintf("Test Nachricht %i", i), &recipient, log)
+		}
+	}()
+
 	go func(signaler2 Signaler) {
 		for !signaler2.read() {
 			if len(exploredUsers) > 0 {
@@ -110,8 +118,16 @@ func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) e
 		return err
 		wg.Done()
 	}
+
 	// Close the messageListener when the application closes.
-	defer l.Close()
+	// defer functions run at the end of the parent-function
+	defer func(l net.Listener) {
+		err := l.Close()
+		if err != nil {
+			fmt.Println("Error reading:", err.Error())
+		}
+	}(l)
+
 	logger(fmt.Sprintf("Listening for incoming messages on %s:%s", CONN_HOST, MESSAGE_PORT), log)
 	for {
 		// Listen for an incoming connection.
@@ -119,14 +135,14 @@ func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) e
 		if err != nil {
 			fmt.Println("Error accepting incoming message: ", err.Error())
 			return err
-			wg.Done()
+			os.Exit(1)
 		}
 		connection := Conn{
 			sourceIp:   conn.LocalAddr().String(),
 			partner:    nil,
 			connection: conn,
 		}
-		//logger(fmt.Sprintf("handling request from %s sent by user with name %s", connection.sourceIp, connection.partner.name), log)
+		logger(fmt.Sprintf("handling request from %s", connection.sourceIp), log)
 		// Handle connections in a new goroutine.
 		go connection.HandleRequest(log, msgChannel)
 	}
