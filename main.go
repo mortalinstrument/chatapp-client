@@ -112,7 +112,7 @@ func main() {
 func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) error {
 	time.Sleep(time.Duration(time.Second * 1))
 	// Listen for incoming connections.
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+MESSAGE_PORT)
+	l, err := net.Listen(CONN_TYPE, "0.0.0.0:"+MESSAGE_PORT)
 	if err != nil {
 		fmt.Println("Error listening for messages: ", err.Error())
 		return err

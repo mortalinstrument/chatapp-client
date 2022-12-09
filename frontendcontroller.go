@@ -141,5 +141,4 @@ func (frontend Frontend) serveWs(w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go frontend.writePump(conn)
 	go readPump(conn)
-
 }
