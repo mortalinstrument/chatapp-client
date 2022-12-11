@@ -18,8 +18,6 @@ func explore(log *os.File) {
 	fmt.Println(broadcast)
 
 	for {
-		time.Sleep(time.Second * 30)
-
 		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: broadcast, Port: 9999})
 		if err != nil {
 			logger(fmt.Sprintf("error while exploring: %s", err.Error()), log)
@@ -30,15 +28,18 @@ func explore(log *os.File) {
 
 		logger(fmt.Sprintf("sending explore to broadcast adress: %s", broadcast.String()), log)
 		conn.Write([]byte(myself.Name))
+
+		time.Sleep(time.Second * 30)
 	}
 }
 
-func listenForExplorers(log *os.File) {
+func listenForExplorers(log *os.File, userChannel chan User, removeUserChannel chan User) {
 	pc, err := net.ListenPacket("udp4", ":9999")
 	logger("listening for other clients to explore on port 9999", log)
 	if err != nil {
 		fmt.Println("Error while listening for other clients: " + err.Error())
 	}
+
 	defer pc.Close()
 
 	for {
@@ -64,9 +65,18 @@ func listenForExplorers(log *os.File) {
 			return false
 		}
 		if !(newUser.Name == myself.Name) || !(newUser.IP == myself.IP) {
-			if !userDoesAlreadyExist() {
+			if newUser.Name == "" {
+				index := findUserIndexByIP(exploredUsers, newUser)
+				if !(index == -1) {
+					exploredUsers = remove(exploredUsers, index)
+					removeUserChannel <- newUser
+					logger(fmt.Sprintf("got empty exploring message from %s, deleting user that used to be found on this ip from list", newUser.IP), log)
+				}
+			} else if !userDoesAlreadyExist() {
 				exploredUsers = append(exploredUsers, newUser)
 				logger("got exploring message from another client, creating user: "+newUser.Name+" with ip: "+newUser.IP, log)
+				userChannel <- newUser
+				logger("added to userChannel", log)
 			} else {
 				logger("recieved Broadcast, but ignored it because user already exists ( "+newUser.Name+", "+newUser.IP+" )", log)
 			}
@@ -74,6 +84,27 @@ func listenForExplorers(log *os.File) {
 			logger("recieved Broadcast, but ignored it because it is myself ( "+newUser.Name+" = "+myself.Name+", "+newUser.IP+" = "+myself.IP+" )", log)
 		}
 	}
+}
+
+func findUserIndexByIP(a []User, x User) int {
+	for i, n := range a {
+		if x.IP == n.IP {
+			return i
+		}
+	}
+	return -1
+}
+
+func remove(a []User, x int) []User {
+	newLength := 0
+	for index := range a {
+		if x != index {
+			a[newLength] = a[index]
+			newLength++
+		}
+	}
+	newArray := a[:newLength]
+	return newArray
 }
 
 func getOwnIPAdress() net.IP {

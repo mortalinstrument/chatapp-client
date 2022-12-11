@@ -27,22 +27,40 @@ export type User = {
   Messages: minifiedMessage[]
 }
 
-const socket = new WebSocket("ws://localhost:7777/c")
+const messageSocket = new WebSocket("ws://localhost:7777/c")
+const userSocket =  new WebSocket("ws://localhost:7777/cu")
+
 
 export interface partnersState {
   partners: Array<User>
+  possiblePartners: Array<User>
+  myself: User
 }
 
 export default createStore({
   state: (): partnersState => ({
-    partners: Array<User>()
+    partners: Array<User>(),
+    possiblePartners: Array<User>(),
+    myself: {} as User
   }),
   getters: {
     getPartners: state => {
       return state.partners
+    },
+    getPossiblePartners: state => {
+      return state.possiblePartners
+    },
+    getUserInfo: state => {
+      return state.myself
     }
   },
   mutations: {
+    newChat(state, newPartnerToBe: User){
+      const index = state.partners.findIndex((partner) => partner.IP == newPartnerToBe.IP )
+      if(index == -1){
+        state.partners.unshift(newPartnerToBe)
+      }
+    },
     addMessageFromWebsocket(state, payload:Message){
       const index = state.partners.findIndex((partner) => partner.IP == payload.From.IP )
       if(index == -1){
@@ -74,31 +92,98 @@ export default createStore({
       const msgToSave: minifiedMessage = {
         Message: payload.Message,
         Timestamp: payload.Timestamp,
-        //TODO UPDATE WITH REAL NAME THATH SHOULD BE ASKED
-        From: "Testuser" 
+        From: state.myself.Name 
       }
       state.partners[index]?.Messages.unshift(msgToSave)
+    },
+    addPossiblePartnerFromWebsocket(state, payload: User){
+      state.possiblePartners.unshift(payload)
+    },
+    removePossiblePartnerFromWebsocket(state, payload: string){
+      state.possiblePartners = state.possiblePartners.filter(function(value, index, arr){ 
+        return value.IP != payload;
+    });
+    },
+    setUserData(state, payload: User) {
+      state.myself = payload
+    },
+    setPossiblePartners(state, payload: User[]){
+      state.possiblePartners = payload
     }
   },
   actions: {
-    async establishWebsocketConnection(context){
-      socket.onclose = event => {
-        console.log("Socket closed: " + event.reason)
+    async establishMessageWebsocketConnection(context){
+      messageSocket.onclose = event => {
+        console.log("Message Socket closed: " + event.reason)
       }
 
-      socket.onerror = error => {
-        console.log("Socket error: " + error)
+      messageSocket.onerror = error => {
+        console.log("Message Socket error: " + error)
       }
 
-      socket.onmessage = await function (evt){
+      messageSocket.onmessage = await function (evt){
         const jsonObject = JSON.parse(evt.data)
-        console.log(jsonObject)
+        console.log("Message Websocket:" + jsonObject)
         context.commit('addMessageFromWebsocket', jsonObject)
       }
     },
+    async establishUserWebsocketConnection(context){
+      //first get all users, then init websocket
+      const allUsersRequest = await fetch("http://localhost:7777/whothere")
+      let allUsersData = await allUsersRequest.json()
+
+      if (!allUsersRequest.ok) {
+        const error = new Error(
+          "getting all users failed"
+        )
+        throw error
+      }
+
+      if (allUsersData == null){
+        allUsersData = Array<User>()
+      }
+      context.commit('setPossiblePartners', allUsersData)
+
+      //setup event listeners for constant communication
+      userSocket.onclose = event => {
+        console.log("User Socket closed: " + event.reason)
+      }
+
+      userSocket.onerror = error => {
+        console.log("User Socket error: " + error)
+      }
+
+      userSocket.onmessage = await function(evt){
+        const evtString = String(evt.data)
+        if(evtString.search("remove") != -1){
+          const ip = evtString.split(":")[1]
+          console.log("User Websocket: REMOVE: " + ip)
+          context.commit('removePossiblePartnerFromWebsocket', ip)
+
+        } else {
+          const jsonObject = JSON.parse(evt.data)
+          console.log("User Websocket: ADD: " + jsonObject)
+          context.commit('addPossiblePartnerFromWebsocket', jsonObject)
+        }
+      }
+    },
     sendMessage(context, message: outgoingMessage){
-      socket.send(JSON.stringify(message))
+      messageSocket.send(JSON.stringify(message))
       context.commit('addMessageFromFrontend', message)
+    },
+    async requestUserInfo(context){
+      const responseUser = await fetch("http://localhost:7777/whoami");
+      const responseUserData = await responseUser.json();
+  
+      if (!responseUser.ok) {
+        const error = new Error(
+          "getting user info failed"
+        )
+        throw error
+      }
+      console.log(responseUserData)
+
+      context.commit('setUserData', responseUserData)
     }
   },
   modules: {

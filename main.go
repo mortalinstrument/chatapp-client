@@ -10,8 +10,10 @@ import (
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"net"
 	"os"
+	"os/signal"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -54,6 +56,35 @@ var chat embed.FS
 var log = createLogFile()
 
 func main() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	//initalise channels for websocket communication on event with the frontend
+	msgCannel := make(chan Message, 10)
+	userChannel := make(chan User, 1)
+	removeUserChannel := make(chan User, 1)
+
+	var wg sync.WaitGroup
+	signaler := Signaler{done: false}
+
+	go func() {
+		sig := <-sigs
+		broadcast := calculateBroadcastAdress()
+		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: broadcast, Port: 9999})
+		if err != nil {
+			logger(fmt.Sprintf("error while removing myself from explore: %s", err.Error()), log)
+			os.Exit(1)
+		}
+
+		defer conn.Close()
+
+		logger(fmt.Sprintf("sending removing explore to broadcast adress: %s", broadcast.String()), log)
+		conn.Write([]byte(""))
+
+		fmt.Print(sig)
+		signaler.done = true
+	}()
+
 	var s Config
 	err := envconfig.Process("chat", &s)
 	if err != nil {
@@ -61,29 +92,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	msgCannel := make(chan Message, 1)
-
 	defer log.Close()
 
+	//TODO: needs access to userchannel
 	go explore(log)
-	go listenForExplorers(log)
+	go listenForExplorers(log, userChannel, removeUserChannel)
 
-	//TODO: should come from frontend
 	fmt.Println("username: " + s.Username)
 	myself.Name = s.Username
 	myself.Active = true
 	myself.LastLogin = time.Now()
 	myself.IP = getOwnIPAdress().String()
 
-	var wg sync.WaitGroup
-	signaler := Signaler{done: false}
-
-	wg.Add(2) // Wait for 2 goroutine (thread) to be done before stopping to wait
+	//TODO: remove testing functions
+	wg.Add(1) // Wait for 1 goroutine (thread) to be done before stopping to wait
 	// start goroutine for messageListener
-	go messageListener(wg, log, msgCannel)
+	go messageListener(&wg, &signaler, log, msgCannel)
 	//instance new frontend and start listener from there
-	go Frontend{msgCannel}.frontendListener(wg, log)
+	go Frontend{msgCannel, userChannel, removeUserChannel}.frontendListener(log)
 
+	//TODO: remove testing functions
 	go func() {
 		recipient := ipaddr.NewIPAddressString("127.0.0.1").GetAddress().GetNetIP()
 		for i := 0; i < 1000; i++ {
@@ -92,6 +120,7 @@ func main() {
 		}
 	}()
 
+	//TODO: remove testing functions
 	go func(signaler2 Signaler) {
 		for !signaler2.read() {
 			if len(exploredUsers) > 0 {
@@ -106,10 +135,11 @@ func main() {
 			}
 		}
 	}(signaler)
+
 	wg.Wait()
 }
 
-func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) error {
+func messageListener(wg *sync.WaitGroup, signaler *Signaler, log *os.File, msgChannel chan Message) error {
 	time.Sleep(time.Duration(time.Second * 1))
 	// Listen for incoming connections.
 	l, err := net.Listen(CONN_TYPE, "0.0.0.0:"+MESSAGE_PORT)
@@ -129,7 +159,7 @@ func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) e
 	}(l)
 
 	logger(fmt.Sprintf("Listening for incoming messages on %s:%s", CONN_HOST, MESSAGE_PORT), log)
-	for {
+	for !signaler.read() {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
@@ -146,6 +176,9 @@ func messageListener(wg sync.WaitGroup, log *os.File, msgChannel chan Message) e
 		// Handle connections in a new goroutine.
 		go connection.HandleRequest(log, msgChannel)
 	}
+
+	wg.Done()
+	return nil
 }
 
 func sendRequest(msg string, recipient *net.IP, log *os.File) (err error) {
