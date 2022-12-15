@@ -79,7 +79,7 @@ func main() {
 
 		logger(fmt.Sprintf("sending removing explore to broadcast adress: %s", broadcast.String()), log)
 		conn.Write([]byte(""))
-
+		wg.Done()
 		fmt.Print(sig)
 		signaler.done = true
 	}()
