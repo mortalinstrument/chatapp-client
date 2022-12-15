@@ -3,14 +3,14 @@
     <ion-header :translucent="true">
       <ion-toolbar>
         <ion-title>SchardtChat</ion-title>
-        <ion-label v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }} mit IP: {{ getUserInfo().IP }}</ion-label>
+        <ion-label slot="end" v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }} mit IP: {{ getUserInfo().IP }}</ion-label>
       </ion-toolbar>
     </ion-header>
     <ion-content :fullscreen="true">
       <ion-header collapse="condense">
         <ion-toolbar>
         <ion-title>SchardtChat</ion-title>
-        <ion-label v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }}</ion-label>
+        <ion-label slot="end" v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }}</ion-label>
       </ion-toolbar>
     </ion-header>
 

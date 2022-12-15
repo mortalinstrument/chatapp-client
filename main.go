@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"net"
 	"os"
 	"os/signal"
@@ -94,7 +93,6 @@ func main() {
 
 	defer log.Close()
 
-	//TODO: needs access to userchannel
 	go explore(log)
 	go listenForExplorers(log, userChannel, removeUserChannel)
 
@@ -104,7 +102,6 @@ func main() {
 	myself.LastLogin = time.Now()
 	myself.IP = getOwnIPAdress().String()
 
-	//TODO: remove testing functions
 	wg.Add(1) // Wait for 1 goroutine (thread) to be done before stopping to wait
 	// start goroutine for messageListener
 	go messageListener(&wg, &signaler, log, msgCannel)
@@ -112,7 +109,7 @@ func main() {
 	go Frontend{msgCannel, userChannel, removeUserChannel}.frontendListener(log)
 
 	//TODO: remove testing functions
-	go func() {
+	/*go func() {
 		recipient := ipaddr.NewIPAddressString("127.0.0.1").GetAddress().GetNetIP()
 		for i := 0; i < 1000; i++ {
 			time.Sleep(6 * time.Second)
@@ -135,6 +132,7 @@ func main() {
 			}
 		}
 	}(signaler)
+	*/
 
 	wg.Wait()
 }

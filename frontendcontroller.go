@@ -132,6 +132,7 @@ func (f Frontend) writeMessagePump(conn *websocket.Conn) {
 	}
 }
 
+// TODO:FIX WEBSOCKET FOR USERS
 func (f Frontend) writeUserPump(conn *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 

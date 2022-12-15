@@ -58,6 +58,7 @@ export default createStore({
     newChat(state, newPartnerToBe: User){
       const index = state.partners.findIndex((partner) => partner.IP == newPartnerToBe.IP )
       if(index == -1){
+        newPartnerToBe.Messages = new Array<minifiedMessage>
         state.partners.unshift(newPartnerToBe)
       }
     },
