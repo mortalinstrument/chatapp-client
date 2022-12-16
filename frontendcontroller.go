@@ -132,7 +132,6 @@ func (f Frontend) writeMessagePump(conn *websocket.Conn) {
 	}
 }
 
-// TODO:FIX WEBSOCKET FOR USERS
 func (f Frontend) writeUserPump(conn *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 
@@ -199,6 +198,8 @@ func (f Frontend) writeUserPump(conn *websocket.Conn) {
 }
 
 func (frontend Frontend) serveUserInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
 	userInfo, err := json.Marshal(*myself)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -208,6 +209,8 @@ func (frontend Frontend) serveUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (frontend Frontend) serveMessagesWs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -222,6 +225,8 @@ func (frontend Frontend) serveMessagesWs(w http.ResponseWriter, r *http.Request)
 }
 
 func (frontend Frontend) serveUsersWs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -233,6 +238,8 @@ func (frontend Frontend) serveUsersWs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (frontend Frontend) serveAllUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
 	allUsers, err := json.Marshal(exploredUsers)
 	if err != nil {
 		fmt.Println(err.Error())
