@@ -3,28 +3,26 @@
     <ion-header :translucent="true">
       <ion-toolbar>
         <ion-title>SchardtChat</ion-title>
-        <ion-label slot="end" v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }} mit IP: {{ getUserInfo().IP }}</ion-label>
       </ion-toolbar>
     </ion-header>
     <ion-content :fullscreen="true">
       <ion-header collapse="condense">
         <ion-toolbar>
         <ion-title>SchardtChat</ion-title>
-        <ion-label slot="end" v-if="getUserInfo().Name">angemeldet als: {{ getUserInfo().Name }}</ion-label>
       </ion-toolbar>
     </ion-header>
 
     <ListCardVue :partners="getPartners()"></ListCardVue>
     
-    <ion-fab slot="fixed" vertical="top" horizontal="center" :edge="true">
+    <ion-fab slot="fixed" vertical="top" horizontal="end" :edge="true">
       <ion-fab-button>
         <ion-icon :icon="chevronDownCircle"></ion-icon>
       </ion-fab-button>
       <ion-fab-list side="bottom">
-        <ion-fab-button @click="toggleDarkTheme()">
+        <ion-fab-button color="dark" @click="toggleDarkTheme()">
           <ion-icon :icon="contrastOutline"></ion-icon>
         </ion-fab-button>
-        <ion-fab-button id="open-modal" expand="block">
+        <ion-fab-button id="open-modal" color="dark" expand="block">
             <ion-icon :icon="add"></ion-icon>
         </ion-fab-button>
       </ion-fab-list>
@@ -34,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonLabel, IonFab, IonFabButton, IonFabList } from '@ionic/vue';
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonFab, IonFabButton, IonFabList } from '@ionic/vue';
 import { star, cog, chevronDownCircle, add, contrastOutline } from 'ionicons/icons';
 import { defineComponent } from 'vue';
 import { mapGetters, mapActions } from 'vuex';
@@ -51,7 +49,6 @@ export default defineComponent({
     IonToolbar,
     IonIcon,
     ListCardVue,
-    IonLabel,
     IonFab,
     IonFabButton,
     IonFabList

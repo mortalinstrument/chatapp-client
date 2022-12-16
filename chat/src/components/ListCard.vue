@@ -14,12 +14,7 @@
     <ion-card-content v-if="partner.Messages">
       <ion-list>
         <ion-item>
-          <form @submit.prevent="send(partner)">
-          <p v-if="!messageValid">Bitte geben sie eine Nachricht ein!</p>
-          <ion-label position="floating">Neue Nachricht verfassen</ion-label>
-          <ion-input placeholder="Hier tippen..." v-model="messageToSend"></ion-input>
-          <ion-button type="submit">Send</ion-button>
-          </form>
+          <base-message-field-vue :partner="partner"></base-message-field-vue>
         </ion-item>
         <ion-item-group v-for="message in partner.Messages" :key="message">
 
@@ -41,21 +36,14 @@
   </template>
   
   <script lang="ts">
-    import { IonInput, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList, IonButton } from '@ionic/vue';
+    import { IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList } from '@ionic/vue';
     import { defineComponent } from 'vue';
-    import { mapActions } from 'vuex';
-    import { Message, User, minifiedMessage, outgoingMessage } from '../store/index'
     import BaseModalVue from './base/BaseModal.vue';
+    import BaseMessageFieldVue from './base/BaseMessageField.vue'
  
     export default defineComponent({
-      components: { IonInput, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList, IonButton, BaseModalVue},
+      components: { IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonItemGroup, IonItem, IonItemDivider, IonLabel, IonList, BaseModalVue, BaseMessageFieldVue},
       props: ['partners'],
-      data() {
-        return {
-          messageToSend: "",
-          messageValid: true
-        }
-      },
       computed: {
         noPartners(){
           if(this.partners.length == 0) {
@@ -64,37 +52,6 @@
             return false
           }
         }
-      },
-      methods:{
-        send(partner: User){
-          this.check()
-          if(this.messageValid == false){
-            return
-          }
-          var msg = this.messageToSend
-          var date = new Date
-          // TODO: add name selection to frontend and name to store
-          var msgToSend: outgoingMessage = {
-            Message: msg,
-            Timestamp: date.toJSON(),
-            ToIP: partner.IP,
-            ToName: partner.Name
-          }
-          console.log(msgToSend)
-          this.messageToSend = ""
-          this.sendMessage(msgToSend)
-        },
-        check(){
-          if(this.messageValid == false){
-            this.messageValid = true
-          }
-          if(this.messageToSend == ""){
-            this.messageValid = false
-          }
-        },
-        ...mapActions([
-          'sendMessage',
-        ])
       },
       created(){
         console.log(this.partners)
